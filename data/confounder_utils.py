@@ -30,13 +30,14 @@ confounder_settings = {
 ########################
 ### DATA PREPARATION ###
 ########################
-def prepare_confounder_data(args, train, return_full_dataset=False):
+def prepare_confounder_data(args, train, return_full_dataset=False, ssl_transforms=False):
     full_dataset = confounder_settings[args.dataset]['constructor'](
         root_dir=args.root_dir,
         target_name=args.target_name,
         confounder_names=args.confounder_names,
         model_type=args.model,
-        augment_data=args.augment_data)
+        augment_data=args.augment_data,
+        ssl_transforms=ssl_transforms)
     if return_full_dataset:
         return DRODataset(
             full_dataset,

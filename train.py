@@ -35,22 +35,34 @@ def run_epoch(epoch, model, optimizer, loader, loss_computer, logger, csv_logger
     with torch.set_grad_enabled(is_training):
         for batch_idx, batch in enumerate(prog_bar_loader):
 
-            batch = tuple(t.cuda() for t in batch)
-            x = batch[0]
-            y = batch[1]
-            g = batch[2]
-            if args.model == 'bert':
-                input_ids = x[:, :, 0]
-                input_masks = x[:, :, 1]
-                segment_ids = x[:, :, 2]
-                outputs = model(
-                    input_ids=input_ids,
-                    attention_mask=input_masks,
-                    token_type_ids=segment_ids,
-                    labels=y
-                )[1] # [1] returns logits
+            if isinstance(batch[0], tuple) or isinstance(batch[0], list):
+                assert not args.model == 'bert'
+                y, g = tuple(t.cuda() for t in batch[1:])
+                assert len(batch[0]) == 2
+                x1, x2 = tuple(t.cuda() for t in batch[0])
+                
+                outputs_x1 = model(x1)
+                outputs_x2 = model(x2)
+                outputs = torch.stack([outputs_x1, outputs_x2], dim=1)
+                assert len(outputs.shape) == 3 and outputs.shape[1] == 2
             else:
-                outputs = model(x)
+                batch = tuple(t.cuda() for t in batch)
+                
+                x = batch[0]
+                y = batch[1]
+                g = batch[2]
+                if args.model == 'bert':
+                    input_ids = x[:, :, 0]
+                    input_masks = x[:, :, 1]
+                    segment_ids = x[:, :, 2]
+                    outputs = model(
+                        input_ids=input_ids,
+                        attention_mask=input_masks,
+                        token_type_ids=segment_ids,
+                        labels=y
+                    )[1] # [1] returns logits
+                else:
+                    outputs = model(x)
 
             loss_main = loss_computer.loss(outputs, y, g, is_training)
 

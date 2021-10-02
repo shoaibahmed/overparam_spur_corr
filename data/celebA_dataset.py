@@ -8,6 +8,8 @@ from models import model_attributes
 from torch.utils.data import Dataset, Subset
 from data.confounder_dataset import ConfounderDataset
 
+from data.ssl_transforms import SSLTransform
+
 class CelebADataset(ConfounderDataset):
     """
     CelebA dataset (already cropped and centered).
@@ -15,7 +17,7 @@ class CelebADataset(ConfounderDataset):
     """
 
     def __init__(self, root_dir, target_name, confounder_names,
-                 model_type, augment_data):
+                 model_type, augment_data, ssl_transforms):
         self.root_dir = root_dir
         self.target_name = target_name
         self.confounder_names = confounder_names
@@ -70,14 +72,14 @@ class CelebADataset(ConfounderDataset):
             self.eval_transform = None
         else:
             self.features_mat = None
-            self.train_transform = get_transform_celebA(self.model_type, train=True, augment_data=augment_data)
+            self.train_transform = get_transform_celebA(self.model_type, train=True, augment_data=augment_data, ssl_transforms=ssl_transforms)
             self.eval_transform = get_transform_celebA(self.model_type, train=False, augment_data=augment_data)
 
     def attr_idx(self, attr_name):
         return self.attr_names.get_loc(attr_name)
 
 
-def get_transform_celebA(model_type, train, augment_data):
+def get_transform_celebA(model_type, train, augment_data, ssl_transforms=False):
     orig_w = 178
     orig_h = 218
     orig_min_dim = min(orig_w, orig_h)
@@ -87,22 +89,33 @@ def get_transform_celebA(model_type, train, augment_data):
         target_resolution = (orig_w, orig_h)
 
     if (not train) or (not augment_data):
-        transform = transforms.Compose([
-            transforms.CenterCrop(orig_min_dim),
-            transforms.Resize(target_resolution),
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-        ])
+        if ssl_transforms:
+            print("Using SSL transforms...")
+            print("WARNING: Augment data is disabled by the user. Artifically enabling it back for SSL training...")
+            transform = SSLTransform(size=target_resolution)
+        else:
+            print("Using val transforms...")
+            transform = transforms.Compose([
+                transforms.CenterCrop(orig_min_dim),
+                transforms.Resize(target_resolution),
+                transforms.ToTensor(),
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            ])
     else:
-        # Orig aspect ratio is 0.81, so we don't squish it in that direction any more
-        transform = transforms.Compose([
-            transforms.RandomResizedCrop(
-                target_resolution,
-                scale=(0.7, 1.0),
-                ratio=(1.0, 1.3333333333333333),
-                interpolation=2),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-        ])
+        if ssl_transforms:
+            print("Using SSL transforms...")
+            transform = SSLTransform(size=target_resolution)
+        else:
+            print("Using default transforms...")
+            # Orig aspect ratio is 0.81, so we don't squish it in that direction any more
+            transform = transforms.Compose([
+                transforms.RandomResizedCrop(
+                    target_resolution,
+                    scale=(0.7, 1.0),
+                    ratio=(1.0, 1.3333333333333333),
+                    interpolation=2),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            ])
     return transform
