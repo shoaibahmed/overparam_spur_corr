@@ -38,7 +38,7 @@ class SupConLoss(nn.Module):
                   else torch.device('cpu'))
 
         if len(features.shape) == 2:
-            # Aritifically increase the size of features
+            # Aritifically increase the size of features to [bsz, 1, feature_size]
             features = features[:, None, :]
         
         if len(features.shape) < 3:

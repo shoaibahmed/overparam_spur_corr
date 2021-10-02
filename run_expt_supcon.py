@@ -193,7 +193,8 @@ def main():
             return torch_loss(yhat[:, 1], yhat[:, 0], y)
         criterion = hinge_loss
     elif args.loss_fn == "supcon":
-        criterion = SupConLoss(temperature=0.07, reduction='none')
+        temp = 0.07
+        criterion = SupConLoss(temperature=temp, contrast_mode='all', base_temperature=temp, reduction='none')
     else:
         assert args.loss_fn == "ce"
         criterion = torch.nn.CrossEntropyLoss(reduction='none')
