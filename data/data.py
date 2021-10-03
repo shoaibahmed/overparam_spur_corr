@@ -6,7 +6,8 @@ from data.label_shift_utils import prepare_label_shift_data
 from data.confounder_utils import prepare_confounder_data
 
 # root_dir = '/u/scr/nlp/dro/'
-root_dir = '/mnt/Datasets/'
+# root_dir = '/mnt/Datasets/'
+root_dir = '/netscratch/siddiqui/Datasets/'
 
 dataset_attributes = {
     'CelebA': {
