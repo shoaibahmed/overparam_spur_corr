@@ -135,8 +135,12 @@ def train(model, criterion, dataset,
             warmup_steps=args.warmup_steps,
             t_total=t_total)
     else:
+        param_list = list(filter(lambda p: p.requires_grad, model.parameters()))
+        num_params = sum([x.numel() for x in param_list])
+        print("Total number of trainable parameters in the network:", num_params)
+        
         optimizer = torch.optim.SGD(
-            filter(lambda p: p.requires_grad, model.parameters()),
+            param_list,
             lr=args.lr,
             momentum=0.9,
             weight_decay=args.weight_decay)

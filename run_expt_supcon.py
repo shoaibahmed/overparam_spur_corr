@@ -10,6 +10,7 @@ from data.data import dataset_attributes, shift_types, prepare_data, log_data
 from utils import set_seed, Logger, CSVBatchLogger, log_args
 from train import train
 from variable_width_resnet import resnet50vw, resnet18vw, resnet10vw
+from supcon import SupConModel, LinearClassifier
 from losses import SupConLoss
 
 def main():
@@ -181,6 +182,7 @@ def main():
 
     ## Define the objective
     # if args.hinge:
+    pretraining = False
     if args.loss_fn == "hinge":
         assert args.dataset in ['CelebA', 'CUB'] # Only supports binary
         def hinge_loss(yhat, y):
@@ -193,8 +195,11 @@ def main():
             return torch_loss(yhat[:, 1], yhat[:, 0], y)
         criterion = hinge_loss
     elif args.loss_fn == "supcon":
-        temp = 1.
-        criterion = SupConLoss(temperature=temp, contrast_mode='all', base_temperature=temp, reduction='none', normalize=True)
+        # TODO: Adjust dim_in based on the model
+        model = SupConModel(model, dim_in=256, feat_dim=128)
+        temp = 0.1
+        criterion = SupConLoss(temperature=temp, contrast_mode='all', base_temperature=temp, reduction='none', normalize=False)
+        pretraining = True
     else:
         assert args.loss_fn == "ce"
         criterion = torch.nn.CrossEntropyLoss(reduction='none')
@@ -215,6 +220,25 @@ def main():
     train_csv_logger.close()
     val_csv_logger.close()
     test_csv_logger.close()
+    
+    if pretraining:
+        # Train the final classifier
+        print("Training the linear clasifier on top...")
+        model = LinearClassifier(model, feat_dim=128, num_classes=n_classes)
+        criterion = torch.nn.CrossEntropyLoss(reduction='none')
+        args.lr = 1.
+        args.epochs = 10
+        
+        train_csv_logger = CSVBatchLogger(os.path.join(args.log_dir, 'train_linear.csv'), train_data.n_groups, mode=mode)
+        val_csv_logger =  CSVBatchLogger(os.path.join(args.log_dir, 'val_linear.csv'), train_data.n_groups, mode=mode)
+        test_csv_logger =  CSVBatchLogger(os.path.join(args.log_dir, 'test_linear.csv'), train_data.n_groups, mode=mode)
+
+        train(model, criterion, data, logger, train_csv_logger, val_csv_logger, test_csv_logger, args, epoch_offset=epoch_offset)
+
+        train_csv_logger.close()
+        val_csv_logger.close()
+        test_csv_logger.close()
+        
 
 def check_args(args):
     if args.shift_type == 'confounder':
