@@ -182,6 +182,7 @@ def main():
 
     ## Define the objective
     # if args.hinge:
+    network_output_dim = 256
     pretraining = False
     if args.loss_fn == "hinge":
         assert args.dataset in ['CelebA', 'CUB'] # Only supports binary
@@ -196,7 +197,7 @@ def main():
         criterion = hinge_loss
     elif args.loss_fn == "supcon":
         # TODO: Adjust dim_in based on the model
-        model = SupConModel(model, dim_in=256, feat_dim=128)
+        model = SupConModel(model, dim_in=network_output_dim, feat_dim=128)
         temp = 0.1
         criterion = SupConLoss(temperature=temp, contrast_mode='all', base_temperature=temp, reduction='none', normalize=False)
         pretraining = True
@@ -224,7 +225,7 @@ def main():
     if pretraining:
         # Train the final classifier
         print("Training the linear clasifier on top...")
-        model = LinearClassifier(model, feat_dim=128, num_classes=n_classes)
+        model = LinearClassifier(model, feat_dim=network_output_dim, num_classes=n_classes)
         criterion = torch.nn.CrossEntropyLoss(reduction='none')
         args.lr = 1.
         args.epochs = 10
