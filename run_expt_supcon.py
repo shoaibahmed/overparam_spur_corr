@@ -228,7 +228,7 @@ def main():
         model = LinearClassifier(model, feat_dim=network_output_dim, num_classes=n_classes)
         criterion = torch.nn.CrossEntropyLoss(reduction='none')
         args.lr = 1.
-        args.epochs = 10
+        args.n_epochs = 10
         
         train_csv_logger = CSVBatchLogger(os.path.join(args.log_dir, 'train_linear.csv'), train_data.n_groups, mode=mode)
         val_csv_logger =  CSVBatchLogger(os.path.join(args.log_dir, 'val_linear.csv'), train_data.n_groups, mode=mode)
