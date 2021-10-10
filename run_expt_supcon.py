@@ -182,7 +182,7 @@ def main():
 
     ## Define the objective
     # if args.hinge:
-    network_output_dim = 256
+    network_output_dim = model.feature_size
     pretraining = False
     if args.loss_fn == "hinge":
         assert args.dataset in ['CelebA', 'CUB'] # Only supports binary
