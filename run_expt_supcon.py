@@ -196,7 +196,6 @@ def main():
             return torch_loss(yhat[:, 1], yhat[:, 0], y)
         criterion = hinge_loss
     elif args.loss_fn == "supcon":
-        # TODO: Adjust dim_in based on the model
         model = SupConModel(model, dim_in=network_output_dim, feat_dim=128)
         temp = 0.1
         criterion = SupConLoss(temperature=temp, contrast_mode='all', base_temperature=temp, reduction='none', normalize=False)
