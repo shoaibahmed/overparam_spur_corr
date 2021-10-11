@@ -2,7 +2,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 import numpy as np
 import os, sys, json, argparse
-from summary_utils import plot_double_descent_standard,plot_error_vs_overparam,summarize_results
+from summary_utils import plot_double_descent_standard, plot_error_vs_overparam, summarize_results
 
 def main():
     df = load_results()
@@ -13,11 +13,13 @@ def load_results(seeds=[0,1,2],
                  widths=[1,2,4,6,8,16,32,48,64,80,88,96],
                  epochs={'ERM':49, 'reweight':49, 'subsample':499},
                  splits=['train','val','test'],
+                 loss_funcs=['ce', 'supcon'],
                  n_groups=4,
                  smooth_val_window=10):
     # helpers
-    def get_dirpath(opt_type, width, seed):
-        rundir = f'celebA_{opt_type}_width_{width}_seed_{seed}'
+    def get_dirpath(opt_type, width, seed, loss_func):
+        # rundir = f'output_ce_{opt_type}/celebA_{opt_type}_width_{width}_seed_{seed}_{loss_func}'
+        rundir = f'output_{loss_func}_reweight/celebA_{opt_type}_width_{width}_seed_{seed}_{loss_func}'
         return rundir
 
     # columns
@@ -27,36 +29,40 @@ def load_results(seeds=[0,1,2],
 
     #initialization
     results = []
-    for opt_type, last_epoch in epochs.items():
-        for width in widths:
-            for seed in seeds:
-                row = {}
-                row['opt_type'] = opt_type
-                row['N'] = width
-                row['seed'] = seed
-                for split in splits:
-                    # paths
-                    rundir = get_dirpath(opt_type, width, seed)
-                    log_path = os.path.join(rundir, f'{split}.csv')
-                    # skip if we haven't run it yet
-                    if not os.path.exists(log_path):
-                        print(f'{log_path} not found')
-                        continue
-                    #  
-                    df = pd.read_csv(log_path)
-                    df[robust_column] = df[group_columns].min(axis=1)
-                    last_epoch_row = df[(df['epoch']<=last_epoch) & (df['epoch']>(last_epoch-smooth_val_window))]
-                    if split=='train':
-                        row['avg_train_error'] = 1-last_epoch_row[avg_column].values.mean()
-                        row['robust_train_error'] = 1-last_epoch_row[robust_column].values.mean()
-                        for g in range(4):
-                            row[f'train_error_group:{g}'] = 1-last_epoch_row[f'avg_acc_group:{g}'].values.mean()
-                    elif split=='test':
-                        row['avg_test_error'] = 1-last_epoch_row[avg_column].values.mean()
-                        row['robust_test_error'] = 1-last_epoch_row[robust_column].values.mean()
-                        for g in range(4):
-                            row[f'test_error_group:{g}'] = 1-last_epoch_row[f'avg_acc_group:{g}'].values.mean()
-                results.append(row)
+    # for loss_func in loss_funcs:
+    for loss_func in ['ce']:
+        for opt_type, last_epoch in epochs.items():
+            if loss_func == 'supcon':
+                last_epoch = 9
+            for width in widths:
+                for seed in seeds:
+                    row = {}
+                    row['opt_type'] = opt_type
+                    row['N'] = width
+                    row['seed'] = seed
+                    for split in splits:
+                        # paths
+                        rundir = get_dirpath(opt_type, width, seed, loss_func)
+                        log_path = os.path.join(rundir, f"{split}{'_linear' if loss_func == 'supcon' else ''}.csv")
+                        # skip if we haven't run it yet
+                        if not os.path.exists(log_path):
+                            print(f'{log_path} not found')
+                            continue
+                        #  
+                        df = pd.read_csv(log_path)
+                        df[robust_column] = df[group_columns].min(axis=1)
+                        last_epoch_row = df[(df['epoch']<=last_epoch) & (df['epoch']>(last_epoch-smooth_val_window))]
+                        if split=='train':
+                            row['avg_train_error'] = 1-last_epoch_row[avg_column].values.mean()
+                            row['robust_train_error'] = 1-last_epoch_row[robust_column].values.mean()
+                            for g in range(4):
+                                row[f'train_error_group:{g}'] = 1-last_epoch_row[f'avg_acc_group:{g}'].values.mean()
+                        elif split=='test':
+                            row['avg_test_error'] = 1-last_epoch_row[avg_column].values.mean()
+                            row['robust_test_error'] = 1-last_epoch_row[robust_column].values.mean()
+                            for g in range(4):
+                                row[f'test_error_group:{g}'] = 1-last_epoch_row[f'avg_acc_group:{g}'].values.mean()
+                    results.append(row)
     results_df = pd.DataFrame(results)
     results_df.to_csv('results.csv', index=False)
     return results_df
