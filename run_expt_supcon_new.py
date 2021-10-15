@@ -237,6 +237,11 @@ def main():
         args.n_epochs = 50
         # args.batch_size = 128
         
+        args.log_dir = os.path.join(args.log_dir, "linear_eval")
+        if not os.path.exists(args.log_dir):
+            os.mkdir(args.log_dir)
+            print("Directory created for linear eval model...")
+        
         train_csv_logger = CSVBatchLogger(os.path.join(args.log_dir, 'train_linear.csv'), train_data.n_groups, mode=mode)
         val_csv_logger =  CSVBatchLogger(os.path.join(args.log_dir, 'val_linear.csv'), train_data.n_groups, mode=mode)
         test_csv_logger =  CSVBatchLogger(os.path.join(args.log_dir, 'test_linear.csv'), train_data.n_groups, mode=mode)

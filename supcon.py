@@ -43,6 +43,12 @@ class LinearClassifier(nn.Module):
 
     def eval(self):
         # Override the method to keep the model always in the train mode
-        self.encoder.train()
+        self.encoder.eval()
         self.classifier.eval()
+        return self
+
+    def train(self):
+        # Override the method to keep the model always in the train mode
+        self.encoder.eval()
+        self.classifier.train()
         return self

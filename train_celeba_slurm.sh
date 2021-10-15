@@ -56,15 +56,33 @@ for seed in 0 1 2; do
         #             --container-workdir=`pwd` --container-mount-home --export="NCCL_SOCKET_IFNAME=bond,NCCL_IB_HCA=mlx5" \
         #             /opt/conda/bin/python /netscratch/siddiqui/Repositories/overparam_spur_corr/run_expt_supcon.py -s confounder -d CelebA -t Blond_Hair -c Male --fraction 1.0 --lr 0.01 \
         #                 --batch_size 128 --weight_decay 0.0001 --model resnet10vw --seed ${seed} --n_epochs 50 --save_step 10000 --save_last --log_every 50 --reweight_groups --train_from_scratch --resnet_width ${width} --loss_fn supcon \
-        #                 --log_dir /netscratch/siddiqui/Repositories/overparam_spur_corr/output_supcon_reweight/celebA_reweight_width_${width}_seed_${seed}_supcon/ > /netscratch/siddiqui/Repositories/overparam_spur_corr/output_supcon/celebA_reweight_width_${width}_seed_${seed}_supcon.log 2>&1 &
+        #                 --log_dir /netscratch/siddiqui/Repositories/overparam_spur_corr/output_supcon_reweight/celebA_reweight_width_${width}_seed_${seed}_supcon/ > /netscratch/siddiqui/Repositories/overparam_spur_corr/output_supcon_reweight/celebA_reweight_width_${width}_seed_${seed}_supcon.log 2>&1 &
 
-        # Train using SupCon loss, with reweighting, and a cosine learning rate decay
+        # Train using SupCon loss, simple ERM (appendix)
         srun -p batch -K -N1 --ntasks-per-node=1 --gpus-per-task=1 --cpus-per-gpu=4 --mem=24G \
-                    --kill-on-bad-exit --job-name celebA-supcon-reweight-w_${width}-s_${seed}-revised --nice=0 \
+                    --kill-on-bad-exit --job-name celebA-supcon-erm-w_${width}-s_${seed} --nice=0 \
                     --container-mounts=/netscratch:/netscratch,/ds:/ds,/home/siddiqui:/home/siddiqui --container-image=/netscratch/enroot/nvcr.io_nvidia_pytorch_21.06-py3.sqsh \
                     --container-workdir=`pwd` --container-mount-home --export="NCCL_SOCKET_IFNAME=bond,NCCL_IB_HCA=mlx5" \
-                    /opt/conda/bin/python /netscratch/siddiqui/Repositories/overparam_spur_corr/run_expt_supcon_new.py -s confounder -d CelebA -t Blond_Hair -c Male --fraction 1.0 --lr 0.01 \
-                        --batch_size 256 --weight_decay 0.0001 --model resnet10vw --seed ${seed} --n_epochs 500 --save_step 10000 --save_last --log_every 50 --reweight_groups --train_from_scratch --resnet_width ${width} --loss_fn supcon --lr-scheduler "cosine" \
-                        --log_dir /netscratch/siddiqui/Repositories/overparam_spur_corr/output_supcon_reweight_revised/celebA_reweight_width_${width}_seed_${seed}_supcon/ > /netscratch/siddiqui/Repositories/overparam_spur_corr/output_supcon_reweight_revised/celebA_reweight_width_${width}_seed_${seed}_supcon.log 2>&1 &
+                    /opt/conda/bin/python /netscratch/siddiqui/Repositories/overparam_spur_corr/run_expt_supcon.py -s confounder -d CelebA -t Blond_Hair -c Male --fraction 1.0 --lr 0.01 \
+                        --batch_size 128 --weight_decay 0.0001 --model resnet10vw --seed ${seed} --n_epochs 50 --save_step 10000 --save_last --log_every 50 --train_from_scratch --resnet_width ${width} --loss_fn supcon \
+                        --log_dir /netscratch/siddiqui/Repositories/overparam_spur_corr/output_supcon_erm/celebA_erm_width_${width}_seed_${seed}_supcon/ > /netscratch/siddiqui/Repositories/overparam_spur_corr/output_supcon_erm/celebA_erm_width_${width}_seed_${seed}_supcon.log 2>&1 &
+
+        # # Train using SupCon loss, with reweighting, and a cosine learning rate decay
+        # srun -p batch -K -N1 --ntasks-per-node=1 --gpus-per-task=1 --cpus-per-gpu=4 --mem=64G \
+        #             --kill-on-bad-exit --job-name celebA-supcon-reweight-w_${width}-s_${seed}-revised-bs256 --nice=0 \
+        #             --container-mounts=/netscratch:/netscratch,/ds:/ds,/home/siddiqui:/home/siddiqui --container-image=/netscratch/enroot/nvcr.io_nvidia_pytorch_21.06-py3.sqsh \
+        #             --container-workdir=`pwd` --container-mount-home --export="NCCL_SOCKET_IFNAME=bond,NCCL_IB_HCA=mlx5" \
+        #             /opt/conda/bin/python /netscratch/siddiqui/Repositories/overparam_spur_corr/run_expt_supcon_new.py -s confounder -d CelebA -t Blond_Hair -c Male --fraction 1.0 --lr 0.01 \
+        #                 --batch_size 256 --weight_decay 0.0001 --model resnet10vw --seed ${seed} --n_epochs 500 --save_step 10000 --save_last --log_every 50 --reweight_groups --train_from_scratch --resnet_width ${width} --loss_fn supcon --lr-scheduler "cosine" \
+        #                 --log_dir /netscratch/siddiqui/Repositories/overparam_spur_corr/output_supcon_reweight_revised_bs256/celebA_reweight_width_${width}_seed_${seed}_supcon/ > /netscratch/siddiqui/Repositories/overparam_spur_corr/output_supcon_reweight_revised_bs256/celebA_reweight_width_${width}_seed_${seed}_supcon.log 2>&1 &
+
+        # # Train using SupCon loss, with reweighting, and a cosine learning rate decay
+        # srun -p RTXA6000 -K -N1 --ntasks-per-node=1 --gpus-per-task=1 --cpus-per-gpu=4 --mem=64G \
+        #             --kill-on-bad-exit --job-name celebA-supcon-reweight-w_${width}-s_${seed}-revised-bs128 --nice=0 \
+        #             --container-mounts=/netscratch:/netscratch,/ds:/ds,/home/siddiqui:/home/siddiqui --container-image=/netscratch/enroot/nvcr.io_nvidia_pytorch_21.06-py3.sqsh \
+        #             --container-workdir=`pwd` --container-mount-home --export="NCCL_SOCKET_IFNAME=bond,NCCL_IB_HCA=mlx5" \
+        #             /opt/conda/bin/python /netscratch/siddiqui/Repositories/overparam_spur_corr/run_expt_supcon_new.py -s confounder -d CelebA -t Blond_Hair -c Male --fraction 1.0 --lr 0.01 \
+        #                 --batch_size 128 --weight_decay 0.0001 --model resnet10vw --seed ${seed} --n_epochs 500 --save_step 10000 --save_last --log_every 50 --reweight_groups --train_from_scratch --resnet_width ${width} --loss_fn supcon --lr-scheduler "cosine" \
+        #                 --log_dir /netscratch/siddiqui/Repositories/overparam_spur_corr/output_supcon_reweight_revised_bs128_new/celebA_reweight_width_${width}_seed_${seed}_supcon/ > /netscratch/siddiqui/Repositories/overparam_spur_corr/output_supcon_reweight_revised_bs128_new/celebA_reweight_width_${width}_seed_${seed}_supcon.log 2>&1 &
     done
 done

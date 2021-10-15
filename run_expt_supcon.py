@@ -229,6 +229,11 @@ def main():
         args.lr = 1.
         args.n_epochs = 10
         
+        args.log_dir = os.path.join(args.log_dir, "linear_eval")
+        if not os.path.exists(args.log_dir):
+            os.mkdir(args.log_dir)
+            print("Directory created for linear eval model...")
+        
         train_csv_logger = CSVBatchLogger(os.path.join(args.log_dir, 'train_linear.csv'), train_data.n_groups, mode=mode)
         val_csv_logger =  CSVBatchLogger(os.path.join(args.log_dir, 'val_linear.csv'), train_data.n_groups, mode=mode)
         test_csv_logger =  CSVBatchLogger(os.path.join(args.log_dir, 'test_linear.csv'), train_data.n_groups, mode=mode)
@@ -238,7 +243,7 @@ def main():
         train_csv_logger.close()
         val_csv_logger.close()
         test_csv_logger.close()
-        
+
 
 def check_args(args):
     if args.shift_type == 'confounder':
