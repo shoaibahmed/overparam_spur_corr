@@ -167,6 +167,7 @@ class CEWithCenterLoss(nn.Module):
     def __init__(self, num_classes, feat_dim, lambd, reduction='mean', use_gpu=True):
         super(CEWithCenterLoss, self).__init__()
         self.lambd = lambd
+        self.num_classes = num_classes
         
         assert reduction in ["mean", "none"]
         self.ce_criterion = nn.CrossEntropyLoss(reduction=reduction)
@@ -177,5 +178,9 @@ class CEWithCenterLoss(nn.Module):
         features, logits = x
         ce_loss = self.ce_criterion(logits, y)
         center_loss = self.center_criterion(features, y)
-        loss = ce_loss + self.lambd * center_loss
+        assert len(center_loss) == self.num_classes
+        # loss = ce_loss + self.lambd * center_loss
+        loss = ce_loss
+        for i in range(self.num_classes):
+            loss[y == i] = loss[y == i] + self.lambd * center_loss[i]
         return loss

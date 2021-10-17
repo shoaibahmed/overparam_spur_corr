@@ -65,6 +65,7 @@ def main():
                         help='LR scheduler to be used for training')
     parser.add_argument('--lr-steps', default=None, type=str,
                         help='epochs to decay the learning rate at; separate by -')
+    parser.add_argument('--center-lr', type=float, default=0.5)
 
     parser.add_argument('--weight_decay', type=float, default=5e-5)
     parser.add_argument('--gamma', type=float, default=0.1)

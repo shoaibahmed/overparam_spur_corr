@@ -15,7 +15,7 @@ from loss import LossComputer
 from pytorch_transformers import AdamW, WarmupLinearSchedule
 
 def run_epoch(epoch, model, optimizer, loader, loss_computer, logger, csv_logger, args,
-              is_training, show_progress=False, log_every=50, scheduler=None):
+              is_training, show_progress=False, log_every=50, scheduler=None, criterion_optimizer=None):
     """
     scheduler is only used inside this function if model is bert.
     """
@@ -31,7 +31,7 @@ def run_epoch(epoch, model, optimizer, loader, loss_computer, logger, csv_logger
         prog_bar_loader = tqdm(loader)
     else:
         prog_bar_loader = loader
-
+    
     with torch.set_grad_enabled(is_training):
         for batch_idx, batch in enumerate(prog_bar_loader):
 
@@ -77,6 +77,8 @@ def run_epoch(epoch, model, optimizer, loader, loss_computer, logger, csv_logger
                     optimizer.zero_grad()
                     loss_main.backward()
                     optimizer.step()
+                    if criterion_optimizer is not None:
+                        criterion_optimizer.step()
 
             if is_training and (batch_idx+1) % log_every==0:
                 csv_logger.log(epoch, batch_idx, loss_computer.get_stats(model, args))
@@ -118,6 +120,7 @@ def train(model, criterion, dataset,
         min_var_weight=args.minimum_variational_weight)
 
     # BERT uses its own scheduler and optimizer
+    criterion_optimizer = None
     if args.model == 'bert':
         no_decay = ['bias', 'LayerNorm.weight']
         optimizer_grouped_parameters = [
@@ -162,6 +165,13 @@ def train(model, criterion, dataset,
             scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, args.lr_steps, gamma=0.1)
             print(f"Using step learning rate scheduler with steps at {args.lr_steps} epochs...")
         
+        criterion_param_list = list(filter(lambda p: p.requires_grad, criterion.parameters()))
+        if len(criterion_param_list) > 0:
+            num_params = sum([x.numel() for x in criterion_param_list])
+            print("Total number of trainable parameters in the criterion:", num_params)
+            criterion_optimizer = torch.optim.SGD(criterion_param_list, lr=args.center_lr)
+            print("Using optimization for center loss with a learning rate of:", args.center_lr)
+        
         # if args.scheduler:
         #     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         #         optimizer,
@@ -186,7 +196,8 @@ def train(model, criterion, dataset,
             is_training=True,
             show_progress=args.show_progress,
             log_every=args.log_every,
-            scheduler=scheduler)
+            scheduler=scheduler,
+            criterion_optimizer=criterion_optimizer)
 
         logger.write(f'\nValidation:\n')
         val_loss_computer = LossComputer(
@@ -200,7 +211,8 @@ def train(model, criterion, dataset,
             dataset['val_loader'],
             val_loss_computer,
             logger, val_csv_logger, args,
-            is_training=False)
+            is_training=False,
+            criterion_optimizer=None)
 
         # Test set; don't print to avoid peeking
         if dataset['test_data'] is not None:
@@ -215,7 +227,8 @@ def train(model, criterion, dataset,
                 dataset['test_loader'],
                 test_loss_computer,
                 None, test_csv_logger, args,
-                is_training=False)
+                is_training=False,
+                criterion_optimizer=None)
 
         # Inspect learning rates
         if (epoch+1) % 1 == 0:
