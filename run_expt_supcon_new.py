@@ -66,6 +66,7 @@ def main():
     parser.add_argument('--lr-steps', default=None, type=str,
                         help='epochs to decay the learning rate at; separate by -')
     parser.add_argument('--center-lr', type=float, default=0.5)
+    parser.add_argument('--center-loss-lambda', type=float, default=0.01)
 
     parser.add_argument('--weight_decay', type=float, default=5e-5)
     parser.add_argument('--gamma', type=float, default=0.1)
@@ -210,8 +211,9 @@ def main():
         criterion = SupConLoss(temperature=temp, contrast_mode='all', base_temperature=temp, reduction='none', normalize=False)
         pretraining = True
     elif args.loss_fn == "center_loss":
-        criterion = CEWithCenterLoss(num_classes=n_classes, feat_dim=network_output_dim, lambd=0.5, reduction='none')
+        criterion = CEWithCenterLoss(num_classes=n_classes, feat_dim=network_output_dim, lambd=args.center_loss_lambda, reduction='none')
         model.return_features = True  # Model should return features
+        print("Using a center loss lambda of:", args.center_loss_lambda)
     else:
         assert args.loss_fn == "ce"
         criterion = torch.nn.CrossEntropyLoss(reduction='none')

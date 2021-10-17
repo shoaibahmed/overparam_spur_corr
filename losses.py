@@ -178,9 +178,6 @@ class CEWithCenterLoss(nn.Module):
         features, logits = x
         ce_loss = self.ce_criterion(logits, y)
         center_loss = self.center_criterion(features, y)
-        assert len(center_loss) == self.num_classes
-        # loss = ce_loss + self.lambd * center_loss
-        loss = ce_loss
-        for i in range(self.num_classes):
-            loss[y == i] = loss[y == i] + self.lambd * center_loss[i]
+        assert center_loss.shape == (len(features), self.num_classes), f"{center_loss.shape}"
+        loss = ce_loss + self.lambd * center_loss.sum(dim=1)
         return loss
