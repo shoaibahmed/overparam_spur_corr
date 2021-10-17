@@ -11,7 +11,7 @@ from utils import set_seed, Logger, CSVBatchLogger, log_args
 from train_new import train
 from variable_width_resnet import resnet50vw, resnet18vw, resnet10vw
 from supcon import SupConModel, LinearClassifier
-from losses import SupConLoss
+from losses import SupConLoss, CEWithCenterLoss
 
 def main():
     parser = argparse.ArgumentParser()
@@ -43,7 +43,7 @@ def main():
     parser.add_argument('--use_normalized_loss', default=False, action='store_true')
     parser.add_argument('--btl', default=False, action='store_true')
     # parser.add_argument('--hinge', default=False, action='store_true')
-    parser.add_argument('--loss_fn', default="ce", choices=["ce", "hinge", "supcon"])
+    parser.add_argument('--loss_fn', default="ce", choices=["ce", "hinge", "supcon", "center_loss"])
 
     # Model
     parser.add_argument(
@@ -55,6 +55,7 @@ def main():
 
     # Optimization
     parser.add_argument('--n_epochs', type=int, default=4)
+    parser.add_argument('--cls_epochs', type=int, default=4)
     parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--lr', type=float, default=0.001)
     
@@ -204,9 +205,12 @@ def main():
         criterion = hinge_loss
     elif args.loss_fn == "supcon":
         model = SupConModel(model, dim_in=network_output_dim, feat_dim=128)
-        temp = 0.1
+        temp = 1.
         criterion = SupConLoss(temperature=temp, contrast_mode='all', base_temperature=temp, reduction='none', normalize=False)
         pretraining = True
+    elif args.loss_fn == "center_loss":
+        criterion = CEWithCenterLoss(num_classes=n_classes, feat_dim=network_output_dim, lambd=0.5, reduction='none')
+        model.return_features = True  # Model should return features
     else:
         assert args.loss_fn == "ce"
         criterion = torch.nn.CrossEntropyLoss(reduction='none')
@@ -234,7 +238,7 @@ def main():
         model = LinearClassifier(model, feat_dim=network_output_dim, num_classes=n_classes)
         criterion = torch.nn.CrossEntropyLoss(reduction='none')
         args.lr = 1.
-        args.n_epochs = 50
+        args.n_epochs = args.cls_epochs
         # args.batch_size = 128
         
         args.log_dir = os.path.join(args.log_dir, "linear_eval")

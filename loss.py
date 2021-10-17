@@ -39,6 +39,8 @@ class LossComputer:
         # compute per-sample and per-group losses
         per_sample_losses = self.criterion(yhat, y)
         group_loss, group_count = self.compute_group_avg(per_sample_losses, group_idx)
+        if isinstance(yhat, tuple) or isinstance(yhat, list):
+            yhat = yhat[1]  # Features, logits
         if len(yhat.shape) == 3:  # Only consider the outputs from the first view in this case
             group_acc, group_count = self.compute_group_avg((torch.argmax(yhat[:, 0, :],1)==y).float(), group_idx)
         else:

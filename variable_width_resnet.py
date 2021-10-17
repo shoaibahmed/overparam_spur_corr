@@ -111,7 +111,7 @@ class VariableWidthResNet(nn.Module):
 
     def __init__(self, block, layers, width, num_classes=1000, zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
-                 norm_layer=None):
+                 norm_layer=None, return_features=False):
         super(VariableWidthResNet, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
@@ -143,6 +143,7 @@ class VariableWidthResNet(nn.Module):
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.feature_size = 8 * width * block.expansion
         self.fc = nn.Linear(self.feature_size, num_classes)
+        self.return_features = return_features
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -199,9 +200,11 @@ class VariableWidthResNet(nn.Module):
 
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
-        x = self.fc(x)
+        logits = self.fc(x)
 
-        return x
+        if self.return_features:
+            return x, logits
+        return logits
 
     def forward(self, x):
         return self._forward_impl(x)
