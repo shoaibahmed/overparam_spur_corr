@@ -8,7 +8,7 @@ from models import model_attributes
 from torch.utils.data import Dataset, Subset
 from data.confounder_dataset import ConfounderDataset
 
-from data.ssl_transforms import SSLTransform
+from data.ssl_transforms import ColorAugmentations, SSLTransform
 
 class CelebADataset(ConfounderDataset):
     """
@@ -89,22 +89,24 @@ def get_transform_celebA(model_type, train, augment_data, ssl_transforms=False):
         target_resolution = (orig_w, orig_h)
 
     if (not train) or (not augment_data):
-        if ssl_transforms:
-            print("Using SSL transforms...")
-            print("WARNING: Augment data is disabled by the user. Artifically enabling it back for SSL training...")
-            transform = SSLTransform(size=target_resolution)
-        else:
-            print("Using val transforms...")
-            transform = transforms.Compose([
-                transforms.CenterCrop(orig_min_dim),
-                transforms.Resize(target_resolution),
-                transforms.ToTensor(),
-                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-            ])
+        # if ssl_transforms:
+        #     print("Using SSL transforms...")
+        #     print("WARNING: Augment data is disabled by the user. Artifically enabling it back for SSL training...")
+        #     transform = SSLTransform(size=target_resolution)
+        # else:
+        print(f"Using val transforms (train: {train} / augment data: {augment_data})...")
+        transform = transforms.Compose([
+            transforms.CenterCrop(orig_min_dim),
+            transforms.Resize(target_resolution),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
     else:
         if ssl_transforms:
-            print("Using SSL transforms...")
-            transform = SSLTransform(size=target_resolution)
+            # print("Using SSL transforms...")
+            # transform = SSLTransform(size=target_resolution)
+            print("Using drastic augmentations for training...")
+            transform = ColorAugmentations(size=target_resolution)
         else:
             print("Using default transforms...")
             # Orig aspect ratio is 0.81, so we don't squish it in that direction any more

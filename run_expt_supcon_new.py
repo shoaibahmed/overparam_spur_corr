@@ -108,8 +108,8 @@ def main():
 
     # Data
     # Test data for label_shift_step is not implemented yet
-    # ssl_transforms = args.loss_fn == "supcon"
-    ssl_transforms = False
+    ssl_transforms = args.loss_fn in ["supcon", "center_loss"]
+    # ssl_transforms = False
     test_data = None
     test_loader = None
     if args.shift_type == 'confounder':
