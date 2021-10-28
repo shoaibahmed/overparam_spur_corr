@@ -199,7 +199,7 @@ class DistillationLoss(nn.Module):
     def forward(self, x, logits, y):
         with torch.no_grad():
             teacher_logits = self.teacher_net(x)
-            assert not torch.isnan(teacher_logits)
+            assert not torch.isnan(teacher_logits).any()
             assert len(teacher_logits.shape) == 2
             teacher_preds = teacher_logits.argmax(dim=1)
             assert teacher_preds.shape == y.shape
@@ -214,7 +214,7 @@ class DistillationLoss(nn.Module):
         if self.reduction == "mean":
             distillation_loss = self.mse_criterion(logits, target_logits)
         else:
-            distillation_loss = ((logits - target_logits) ** 2).sum(dim=1) ** 0.5
-            assert not torch.isnan(distillation_loss)
+            distillation_loss = ((logits - target_logits) ** 2).sum(dim=1)
+            assert not torch.isnan(distillation_loss).any()
         loss = ce_loss + self.lambd * distillation_loss
         return loss
