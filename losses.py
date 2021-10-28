@@ -193,18 +193,28 @@ class DistillationLoss(nn.Module):
         self.mse_criterion = nn.MSELoss(reduction=reduction)
         self.teacher_net = teacher_net
         self.teacher_net.requires_grad_(False)
+        self.teacher_net.eval()
+        self.reduction = reduction
 
     def forward(self, x, logits, y):
         with torch.no_grad():
             teacher_logits = self.teacher_net(x)
+            assert not torch.isnan(teacher_logits)
             assert len(teacher_logits.shape) == 2
             teacher_preds = teacher_logits.argmax(dim=1)
+            assert teacher_preds.shape == y.shape
             correct_teacher_preds = teacher_preds == y
+            assert len(correct_teacher_preds.shape) == 1
             
             target_logits = logits.clone()
             target_logits[correct_teacher_preds] = teacher_logits[correct_teacher_preds]
+            target_logits = target_logits.detach()
         
         ce_loss = self.ce_criterion(logits, y)
-        distillation_loss = self.mse_criterion(logits, target_logits)
+        if self.reduction == "mean":
+            distillation_loss = self.mse_criterion(logits, target_logits)
+        else:
+            distillation_loss = ((logits - target_logits) ** 2).sum(dim=1) ** 0.5
+            assert not torch.isnan(distillation_loss)
         loss = ce_loss + self.lambd * distillation_loss
         return loss

@@ -219,11 +219,13 @@ def main():
         model.return_features = True  # Model should return features
         print("Using a center loss lambda of:", args.center_loss_lambda)
     elif args.loss_fn == "distillation":
-        teacher_width = 1
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        teacher_net = resnet10vw(teacher_width, num_classes=n_classes).to(device)
+        # teacher_width = 1
+        # teacher_net = resnet10vw(teacher_width, num_classes=n_classes).to(device)
         args.distillation_checkpoint = "/netscratch/siddiqui/Repositories/overparam_spur_corr/output_ce_reweight_cosine_augment/celebA_reweight_width_1_seed_0_ce/last_model.pth"
-        teacher_net.load_state_dict(torch.load(args.distillation_checkpoint, map_location=device))
+        # teacher_net.load_state_dict(torch.load(args.distillation_checkpoint, map_location=device))
+        assert os.path.exists(args.distillation_checkpoint)
+        teacher_net = torch.load(args.distillation_checkpoint).to(device)
         print("Loaded teacher network:", args.distillation_checkpoint)
         criterion = DistillationLoss(teacher_net, lambd=0.1, reduction='none')
     else:
