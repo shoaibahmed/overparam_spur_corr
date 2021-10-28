@@ -181,3 +181,30 @@ class CEWithCenterLoss(nn.Module):
         assert center_loss.shape == (len(features), self.num_classes), f"{center_loss.shape}"
         loss = ce_loss + self.lambd * center_loss.sum(dim=1)
         return loss
+
+
+class DistillationLoss(nn.Module):
+    def __init__(self, teacher_net, lambd, reduction='mean'):
+        super(DistillationLoss, self).__init__()
+        self.lambd = lambd
+        
+        assert reduction in ["mean", "none"]
+        self.ce_criterion = nn.CrossEntropyLoss(reduction=reduction)
+        self.mse_criterion = nn.MSELoss(reduction=reduction)
+        self.teacher_net = teacher_net
+        self.teacher_net.requires_grad_(False)
+
+    def forward(self, x, logits, y):
+        with torch.no_grad():
+            teacher_logits = self.teacher_net(x)
+            assert len(teacher_logits.shape) == 2
+            teacher_preds = teacher_logits.argmax(dim=1)
+            correct_teacher_preds = teacher_preds == y
+            
+            target_logits = logits.clone()
+            target_logits[correct_teacher_preds] = teacher_logits[correct_teacher_preds]
+        
+        ce_loss = self.ce_criterion(logits, y)
+        distillation_loss = self.mse_criterion(logits, target_logits)
+        loss = ce_loss + self.lambd * distillation_loss
+        return loss

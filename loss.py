@@ -4,6 +4,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
+from losses import DistillationLoss
+
 class LossComputer:
     def __init__(self, criterion, is_robust, dataset, alpha=None, gamma=0.1, adj=None, min_var_weight=0, step_size=0.01, normalize_loss=False, btl=False):
         self.criterion = criterion
@@ -35,9 +37,13 @@ class LossComputer:
 
         self.reset_stats()
 
-    def loss(self, yhat, y, group_idx=None, is_training=False):
+    def loss(self, yhat, y, group_idx=None, is_training=False, input=None):
         # compute per-sample and per-group losses
-        per_sample_losses = self.criterion(yhat, y)
+        if isinstance(self.criterion, DistillationLoss):
+            assert input is not None
+            per_sample_losses = self.criterion(input, yhat, y)
+        else:
+            per_sample_losses = self.criterion(yhat, y)
         group_loss, group_count = self.compute_group_avg(per_sample_losses, group_idx)
         if isinstance(yhat, tuple) or isinstance(yhat, list):
             yhat = yhat[1]  # Features, logits

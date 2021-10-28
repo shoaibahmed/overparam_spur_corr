@@ -64,7 +64,7 @@ def run_epoch(epoch, model, optimizer, loader, loss_computer, logger, csv_logger
                 else:
                     outputs = model(x)
 
-            loss_main = loss_computer.loss(outputs, y, g, is_training)
+            loss_main = loss_computer.loss(outputs, y, g, is_training, input=x)
 
             if is_training:
                 if args.model == 'bert':
