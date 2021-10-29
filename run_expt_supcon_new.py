@@ -227,7 +227,7 @@ def main():
         assert os.path.exists(args.distillation_checkpoint)
         teacher_net = torch.load(args.distillation_checkpoint).to(device)
         print("Loaded teacher network:", args.distillation_checkpoint)
-        criterion = DistillationLoss(teacher_net, lambd=0.1, reduction='none')
+        criterion = DistillationLoss(teacher_net, lambd=1., reduction='none')
     else:
         assert args.loss_fn == "ce"
         criterion = torch.nn.CrossEntropyLoss(reduction='none')

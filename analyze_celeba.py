@@ -10,6 +10,7 @@ def main():
     summarize_results(df, ['reweight', 'subsample', 'ERM'], ['reweight', 'subsample', 'ERM'], 'summary.json')
 
 def load_results(seeds=[0,1,2],
+                 # widths=[1,2,4,6,8,16,32,48,64,80,88,96,128,144,160,176,192,224],
                  widths=[1,2,4,6,8,16,32,48,64,80,88,96],
                  epochs={'ERM':49, 'reweight':49, 'subsample':499},
                  splits=['train','val','test'],
@@ -18,8 +19,12 @@ def load_results(seeds=[0,1,2],
                  smooth_val_window=10):
     # helpers
     def get_dirpath(opt_type, width, seed, loss_func):
-        # rundir = f'output_ce_{opt_type}/celebA_{opt_type}_width_{width}_seed_{seed}_{loss_func}'
-        rundir = f'output_{loss_func}_reweight/celebA_{opt_type}_width_{width}_seed_{seed}_{loss_func}'
+        # rundir = f"output_{loss_func}_{opt_type.lower()}_{'lambda_0.01_' if loss_func == 'center' else ''}cosine_augment_fixed_proj_128/celebA_{opt_type.lower()}_width_{width}_seed_{seed}_{loss_func}"
+        rundir = f"output_{loss_func}_{opt_type.lower()}_{'lambda_0.01_' if loss_func == 'center' else 'lambda_0.1_' if loss_func == 'distill' else ''}cosine_augment/celebA_{opt_type.lower()}_width_{width}_seed_{seed}_{loss_func}"
+        linear_eval_dir = os.path.join(rundir, "linear_eval")
+        if loss_func == 'supcon' and os.path.exists(linear_eval_dir):
+            rundir = linear_eval_dir
+        # rundir = f'output_{loss_func}_reweight/celebA_{opt_type}_width_{width}_seed_{seed}_{loss_func}'
         return rundir
 
     # columns
@@ -30,7 +35,7 @@ def load_results(seeds=[0,1,2],
     #initialization
     results = []
     # for loss_func in loss_funcs:
-    for loss_func in ['ce']:
+    for loss_func in ['distill']:
         for opt_type, last_epoch in epochs.items():
             if loss_func == 'supcon':
                 last_epoch = 9
