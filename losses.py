@@ -218,3 +218,56 @@ class DistillationLoss(nn.Module):
             assert not torch.isnan(distillation_loss).any()
         loss = ce_loss + self.lambd * distillation_loss
         return loss
+
+
+class DistillationWithCenterLoss(nn.Module):
+    def __init__(self, teacher_net, num_classes, feat_dim, lambd_distill, lambd_center,
+                 reduction='mean', use_gpu=True):
+        super(DistillationWithCenterLoss, self).__init__()
+        self.lambd_distill = lambd_distill
+        self.lambd_center = lambd_center
+        self.num_classes = num_classes
+        
+        assert reduction in ["mean", "none"]
+        self.ce_criterion = nn.CrossEntropyLoss(reduction=reduction)
+        self.mse_criterion = nn.MSELoss(reduction=reduction)
+        self.center_criterion = CenterLoss(num_classes, feat_dim, reduction=reduction, use_gpu=use_gpu)
+        
+        self.teacher_net = teacher_net
+        self.teacher_net.requires_grad_(False)
+        self.teacher_net.eval()
+        self.reduction = reduction
+
+    def forward(self, x, logits, y):
+        assert isinstance(logits, list) or isinstance(logits, tuple)  # Features, logits
+        features, logits = logits
+        
+        with torch.no_grad():
+            teacher_logits = self.teacher_net(x)
+            assert not torch.isnan(teacher_logits).any()
+            assert len(teacher_logits.shape) == 2
+            teacher_preds = teacher_logits.argmax(dim=1)
+            assert teacher_preds.shape == y.shape
+            correct_teacher_preds = teacher_preds == y
+            assert len(correct_teacher_preds.shape) == 1
+            
+            target_logits = logits.clone()
+            target_logits[correct_teacher_preds] = teacher_logits[correct_teacher_preds]
+            target_logits = target_logits.detach()
+        
+        # CE loss
+        ce_loss = self.ce_criterion(logits, y)
+        
+        # Center loss
+        center_loss = self.center_criterion(features, y)
+        assert center_loss.shape == (len(features), self.num_classes), f"{center_loss.shape}"
+        
+        # Distillation loss
+        if self.reduction == "mean":
+            distillation_loss = self.mse_criterion(logits, target_logits)
+        else:
+            distillation_loss = ((logits - target_logits) ** 2).sum(dim=1)
+            assert not torch.isnan(distillation_loss).any()
+        
+        loss = ce_loss + self.lambd_center * center_loss.sum(dim=1) + self.lambd_distill * distillation_loss
+        return loss

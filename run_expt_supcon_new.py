@@ -12,7 +12,7 @@ from train_new import train
 # from variable_width_resnet_new import resnet50vw, resnet18vw, resnet10vw
 from variable_width_resnet import resnet50vw, resnet18vw, resnet10vw
 from supcon import SupConModel, LinearClassifier
-from losses import DistillationLoss, SupConLoss, CEWithCenterLoss
+from losses import DistillationLoss, SupConLoss, CEWithCenterLoss, DistillationWithCenterLoss
 
 def main():
     parser = argparse.ArgumentParser()
@@ -44,7 +44,7 @@ def main():
     parser.add_argument('--use_normalized_loss', default=False, action='store_true')
     parser.add_argument('--btl', default=False, action='store_true')
     # parser.add_argument('--hinge', default=False, action='store_true')
-    parser.add_argument('--loss_fn', default="ce", choices=["ce", "hinge", "supcon", "center_loss", "distillation"])
+    parser.add_argument('--loss_fn', default="ce", choices=["ce", "hinge", "supcon", "center_loss", "distillation", "distillation_center_loss"])
     parser.add_argument('--distillation_checkpoint', default=None)
     
     # Model
@@ -198,6 +198,8 @@ def main():
     # if args.hinge:
     network_output_dim = model.feature_size
     pretraining = False
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
     if args.loss_fn == "hinge":
         assert args.dataset in ['CelebA', 'CUB'] # Only supports binary
         def hinge_loss(yhat, y):
@@ -220,14 +222,19 @@ def main():
         print("Using a center loss lambda of:", args.center_loss_lambda)
     elif args.loss_fn == "distillation":
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        # teacher_width = 1
-        # teacher_net = resnet10vw(teacher_width, num_classes=n_classes).to(device)
         args.distillation_checkpoint = "/netscratch/siddiqui/Repositories/overparam_spur_corr/output_ce_reweight_cosine_augment/celebA_reweight_width_1_seed_0_ce/last_model.pth"
-        # teacher_net.load_state_dict(torch.load(args.distillation_checkpoint, map_location=device))
         assert os.path.exists(args.distillation_checkpoint)
         teacher_net = torch.load(args.distillation_checkpoint).to(device)
         print("Loaded teacher network:", args.distillation_checkpoint)
         criterion = DistillationLoss(teacher_net, lambd=1., reduction='none')
+    elif args.loss_fn == "distillation_center_loss":
+        args.distillation_checkpoint = "/netscratch/siddiqui/Repositories/overparam_spur_corr/output_ce_reweight_cosine_augment/celebA_reweight_width_1_seed_0_ce/last_model.pth"
+        assert os.path.exists(args.distillation_checkpoint)
+        teacher_net = torch.load(args.distillation_checkpoint).to(device)
+        print("Loaded teacher network:", args.distillation_checkpoint)
+        model.return_features = True  # Model should return features
+        criterion = DistillationWithCenterLoss(teacher_net, num_classes=n_classes, feat_dim=network_output_dim,
+                                               lambd_distill=1., lambd_center=0.01, reduction='none')
     else:
         assert args.loss_fn == "ce"
         criterion = torch.nn.CrossEntropyLoss(reduction='none')

@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
-from losses import DistillationLoss
+from losses import DistillationLoss, DistillationWithCenterLoss
 
 class LossComputer:
     def __init__(self, criterion, is_robust, dataset, alpha=None, gamma=0.1, adj=None, min_var_weight=0, step_size=0.01, normalize_loss=False, btl=False):
@@ -39,7 +39,7 @@ class LossComputer:
 
     def loss(self, yhat, y, group_idx=None, is_training=False, input=None):
         # compute per-sample and per-group losses
-        if isinstance(self.criterion, DistillationLoss):
+        if isinstance(self.criterion, DistillationLoss) or isinstance(self.criterion, DistillationWithCenterLoss):
             assert input is not None
             per_sample_losses = self.criterion(input, yhat, y)
         else:
