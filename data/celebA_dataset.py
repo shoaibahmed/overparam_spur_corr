@@ -17,7 +17,7 @@ class CelebADataset(ConfounderDataset):
     """
 
     def __init__(self, root_dir, target_name, confounder_names,
-                 model_type, augment_data, ssl_transforms):
+                 model_type, augment_data, ssl_transforms, mixup):
         self.root_dir = root_dir
         self.target_name = target_name
         self.confounder_names = confounder_names
@@ -65,6 +65,8 @@ class CelebADataset(ConfounderDataset):
             'test': 2
         }
 
+        self.ssl_transforms = ssl_transforms
+        self.mixup = mixup
         if model_attributes[self.model_type]['feature_type']=='precomputed':
             self.features_mat = torch.from_numpy(np.load(
                 os.path.join(root_dir, 'features', model_attributes[self.model_type]['feature_filename']))).float()

@@ -29,12 +29,12 @@ for dataset in dataset_attributes:
 
 shift_types = ['confounder', 'label_shift_step']
 
-def prepare_data(args, train, return_full_dataset=False, ssl_transforms=False):
+def prepare_data(args, train, return_full_dataset=False, ssl_transforms=False, mixup=False):
     # Set root_dir to defaults if necessary
     if args.root_dir is None:
         args.root_dir = dataset_attributes[args.dataset]['root_dir']
     if args.shift_type=='confounder':
-        return prepare_confounder_data(args, train, return_full_dataset, ssl_transforms)
+        return prepare_confounder_data(args, train, return_full_dataset, ssl_transforms, mixup)
     elif args.shift_type.startswith('label_shift'):
         assert not return_full_dataset
         assert not ssl_transforms

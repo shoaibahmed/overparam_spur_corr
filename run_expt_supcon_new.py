@@ -44,7 +44,7 @@ def main():
     parser.add_argument('--use_normalized_loss', default=False, action='store_true')
     parser.add_argument('--btl', default=False, action='store_true')
     # parser.add_argument('--hinge', default=False, action='store_true')
-    parser.add_argument('--loss_fn', default="ce", choices=["ce", "hinge", "supcon", "center_loss", "distillation", "distillation_center_loss"])
+    parser.add_argument('--loss_fn', default="ce", choices=["ce", "hinge", "supcon", "center_loss", "distillation", "distillation_center_loss", "ce_mixup"])
     parser.add_argument('--distillation_checkpoint', default=None)
     
     # Model
@@ -111,13 +111,14 @@ def main():
     # Data
     # Test data for label_shift_step is not implemented yet
     ssl_transforms = args.loss_fn in ["supcon", "center_loss"]
+    mixup = "mixup" in args.loss_fn
     assert args.distillation_checkpoint is None or args.loss_fn == "distillation"
     
     # ssl_transforms = False
     test_data = None
     test_loader = None
     if args.shift_type == 'confounder':
-        train_data, val_data, test_data = prepare_data(args, train=True, ssl_transforms=ssl_transforms)
+        train_data, val_data, test_data = prepare_data(args, train=True, ssl_transforms=ssl_transforms, mixup=mixup)
     elif args.shift_type == 'label_shift_step':
         assert not ssl_transforms
         train_data, val_data = prepare_data(args, train=True)
@@ -222,19 +223,41 @@ def main():
         print("Using a center loss lambda of:", args.center_loss_lambda)
     elif args.loss_fn == "distillation":
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        args.distillation_checkpoint = "/netscratch/siddiqui/Repositories/overparam_spur_corr/output_ce_reweight_cosine_augment/celebA_reweight_width_1_seed_0_ce/last_model.pth"
+        if args.distillation_checkpoint is None:
+            print("Using default distillation checkpoint...")
+            args.distillation_checkpoint = "/netscratch/siddiqui/Repositories/overparam_spur_corr/output_ce_reweight_cosine_augment/celebA_reweight_width_1_seed_0_ce/last_model.pth"
         assert os.path.exists(args.distillation_checkpoint)
         teacher_net = torch.load(args.distillation_checkpoint).to(device)
         print("Loaded teacher network:", args.distillation_checkpoint)
         criterion = DistillationLoss(teacher_net, lambd=1., reduction='none')
     elif args.loss_fn == "distillation_center_loss":
-        args.distillation_checkpoint = "/netscratch/siddiqui/Repositories/overparam_spur_corr/output_ce_reweight_cosine_augment/celebA_reweight_width_1_seed_0_ce/last_model.pth"
+        if args.distillation_checkpoint is None:
+            print("Using default distillation checkpoint...")
+            args.distillation_checkpoint = "/netscratch/siddiqui/Repositories/overparam_spur_corr/output_ce_reweight_cosine_augment/celebA_reweight_width_1_seed_0_ce/last_model.pth"
         assert os.path.exists(args.distillation_checkpoint)
         teacher_net = torch.load(args.distillation_checkpoint).to(device)
         print("Loaded teacher network:", args.distillation_checkpoint)
         model.return_features = True  # Model should return features
         criterion = DistillationWithCenterLoss(teacher_net, num_classes=n_classes, feat_dim=network_output_dim,
-                                               lambd_distill=1., lambd_center=0.01, reduction='none')
+                                               lambd_distill=1., lambd_center=0.1, reduction='none')
+    elif args.loss_fn == "ce_mixup":
+        def get_bce_loss(reduction):
+            assert reduction in ['mean', 'none']
+            eps = 1e-6
+
+            def bce_loss(x, y, reduction=reduction):
+                out = -(y * torch.log(x + eps) + (1 - y) * torch.log(1 - x + eps))
+                if reduction == 'mean':
+                    return out.mean()
+                assert reduction == 'none'
+                return out
+
+            return bce_loss
+
+        # print("Using CE with MixUP loss...")
+        # criterion = get_bce_loss(reduction='none')
+        print("Using CE loss in conjunction with same-class MixUp...")
+        criterion = torch.nn.CrossEntropyLoss(reduction='none')
     else:
         assert args.loss_fn == "ce"
         criterion = torch.nn.CrossEntropyLoss(reduction='none')

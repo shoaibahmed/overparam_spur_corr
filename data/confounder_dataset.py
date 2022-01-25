@@ -1,5 +1,6 @@
 import os
 import torch
+import random
 import pandas as pd
 from PIL import Image
 import numpy as np
@@ -38,6 +39,60 @@ class ConfounderDataset(Dataset):
                 assert img.dim()==3
                 img = img.view(-1)
             x = img
+
+            # TODO: Include mixup logic here -- only if the given example is a training example
+            if self.split_array[idx] == self.split_dict['train'] and self.mixup:
+                pseudo_mixup = True  # Mixup only examples from the same class
+                if pseudo_mixup:
+                    print("Using pseudo mixup (mixing examples only from the same class)...")
+                    same_class_instances = [i for i in range(len(self.filename_array)) if self.y_array[i] == y]
+                    mixup_idx = np.random.choice(same_class_instances)
+
+                    mixup_img_filename = os.path.join(
+                                    self.data_dir,
+                                    self.filename_array[mixup_idx])
+                    mixup_img = Image.open(mixup_img_filename).convert('RGB')
+
+                    if self.train_transform:
+                        mixup_img = self.train_transform(mixup_img)
+
+                    # Flatten if needed
+                    if model_attributes[self.model_type]['flatten']:
+                        assert mixup_img.dim()==3
+                        mixup_img = mixup_img.view(-1)
+
+                    # Select a random number from the given beta distribution
+                    # Mixup the images accordingly
+                    alpha = 0.2
+                    lam = np.random.beta(alpha, alpha)
+                    x = lam * img + (1 - lam) * mixup_img
+                
+                else:
+                    print("Using proper mixup...")
+
+                    # Choose another image/label randomly
+                    mixup_idx = random.randint(0, len(self.filename_array)-1)
+                    mixup_y = torch.zeros(10)
+                    mixup_y[self.y_array[mixup_idx]] = 1.
+                    mixup_img_filename = os.path.join(
+                                    self.data_dir,
+                                    self.filename_array[mixup_idx])
+                    mixup_img = Image.open(mixup_img_filename).convert('RGB')
+
+                    if self.train_transform:
+                        mixup_img = self.train_transform(mixup_img)
+
+                    # Flatten if needed
+                    if model_attributes[self.model_type]['flatten']:
+                        assert mixup_img.dim()==3
+                        mixup_img = mixup_img.view(-1)
+
+                    # Select a random number from the given beta distribution
+                    # Mixup the images accordingly
+                    alpha = 0.2
+                    lam = np.random.beta(alpha, alpha)
+                    x = lam * img + (1 - lam) * mixup_img
+                    y = lam * y + (1 - lam) * mixup_y
 
         return x,y,g
 
