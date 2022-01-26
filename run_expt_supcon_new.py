@@ -44,7 +44,7 @@ def main():
     parser.add_argument('--use_normalized_loss', default=False, action='store_true')
     parser.add_argument('--btl', default=False, action='store_true')
     # parser.add_argument('--hinge', default=False, action='store_true')
-    parser.add_argument('--loss_fn', default="ce", choices=["ce", "hinge", "supcon", "center_loss", "distillation", "distillation_center_loss", "ce_mixup"])
+    parser.add_argument('--loss_fn', default="ce", choices=["ce", "hinge", "supcon", "center_loss", "distillation", "distillation_center_loss", "ce_mixup", "center_loss_mixup"])
     parser.add_argument('--distillation_checkpoint', default=None)
     
     # Model
@@ -112,6 +112,8 @@ def main():
     # Test data for label_shift_step is not implemented yet
     ssl_transforms = args.loss_fn in ["supcon", "center_loss"]
     mixup = "mixup" in args.loss_fn
+    if mixup:
+        print("Using MixUp within instances of the same class...")
     assert args.distillation_checkpoint is None or args.loss_fn == "distillation"
     
     # ssl_transforms = False
@@ -221,6 +223,10 @@ def main():
         criterion = CEWithCenterLoss(num_classes=n_classes, feat_dim=network_output_dim, lambd=args.center_loss_lambda, reduction='none')
         model.return_features = True  # Model should return features
         print("Using a center loss lambda of:", args.center_loss_lambda)
+    elif args.loss_fn == "center_loss_mixup":
+        criterion = CEWithCenterLoss(num_classes=n_classes, feat_dim=network_output_dim, lambd=args.center_loss_lambda, reduction='none')
+        model.return_features = True  # Model should return features
+        print("Using center loss (with MixUp) lambda of:", args.center_loss_lambda)
     elif args.loss_fn == "distillation":
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         if args.distillation_checkpoint is None:
