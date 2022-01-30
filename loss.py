@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
-from losses import DistillationLoss, DistillationWithCenterLoss
+from losses import BCELoss, DistillationLoss, DistillationWithCenterLoss
 
 class LossComputer:
     def __init__(self, criterion, is_robust, dataset, alpha=None, gamma=0.1, adj=None, min_var_weight=0, step_size=0.01, normalize_loss=False, btl=False):
@@ -44,6 +44,10 @@ class LossComputer:
             per_sample_losses = self.criterion(input, yhat, y)
         else:
             per_sample_losses = self.criterion(yhat, y)
+        if isinstance(self.criterion, BCELoss) and is_training:
+            assert len(y.shape) == 2 and y.shape[1] > 1, y.shape
+            y = torch.argmax(y, dim=1)
+            assert len(y.shape) == 1, y.shape
         group_loss, group_count = self.compute_group_avg(per_sample_losses, group_idx)
         if isinstance(yhat, tuple) or isinstance(yhat, list):
             yhat = yhat[1]  # Features, logits
@@ -59,7 +63,7 @@ class LossComputer:
         if self.is_robust and not self.btl:
             actual_loss, weights = self.compute_robust_loss(group_loss, group_count)
         elif self.is_robust and self.btl:
-             actual_loss, weights = self.compute_robust_loss_btl(group_loss, group_count)
+            actual_loss, weights = self.compute_robust_loss_btl(group_loss, group_count)
         else:
             actual_loss = per_sample_losses.mean()
             weights = None

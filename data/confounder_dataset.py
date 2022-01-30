@@ -42,12 +42,17 @@ class ConfounderDataset(Dataset):
 
             # TODO: Include mixup logic here -- only if the given example is a training example
             if self.split_array[idx] == self.split_dict['train'] and self.mixup:
-                pseudo_mixup = True  # Mixup only examples from the same class
+                # Select a random number from the given beta distribution
+                alpha = 0.2
+                lam = np.random.beta(alpha, alpha)
+                
+                pseudo_mixup = not self.complete_mixup  # Mixup only examples from the same class
                 if pseudo_mixup:
                     # print("Using pseudo mixup (mixing examples only from the same class)...")
+                    
+                    # Choose another image randomly from the same class
                     same_class_instances = [i for i in range(len(self.filename_array)) if self.y_array[i] == y]
                     mixup_idx = np.random.choice(same_class_instances)
-
                     mixup_img_filename = os.path.join(
                                     self.data_dir,
                                     self.filename_array[mixup_idx])
@@ -61,14 +66,12 @@ class ConfounderDataset(Dataset):
                         assert mixup_img.dim()==3
                         mixup_img = mixup_img.view(-1)
 
-                    # Select a random number from the given beta distribution
-                    # Mixup the images accordingly
-                    alpha = 0.2
-                    lam = np.random.beta(alpha, alpha)
+                    # Mixup the images from the same class
                     x = lam * img + (1 - lam) * mixup_img
                 
                 else:
-                    print("Using proper mixup...")
+                    # print("Using proper mixup...")
+                    
                     # Choose another image/label randomly
                     mixup_idx = random.randint(0, len(self.filename_array)-1)
                     mixup_y = torch.zeros(10)
@@ -86,12 +89,11 @@ class ConfounderDataset(Dataset):
                         assert mixup_img.dim()==3
                         mixup_img = mixup_img.view(-1)
 
-                    # Select a random number from the given beta distribution
-                    # Mixup the images accordingly
-                    alpha = 0.2
-                    lam = np.random.beta(alpha, alpha)
+                    # Mix the two samples including both the images as well as the labels
                     x = lam * img + (1 - lam) * mixup_img
-                    y = lam * y + (1 - lam) * mixup_y
+                    onehot_y = torch.zeros(10)
+                    onehot_y[y] = 1.
+                    y = lam * onehot_y + (1 - lam) * mixup_y
 
         return x,y,g
 

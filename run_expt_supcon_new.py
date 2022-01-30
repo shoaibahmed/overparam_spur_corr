@@ -12,7 +12,7 @@ from train_new import train
 # from variable_width_resnet_new import resnet50vw, resnet18vw, resnet10vw
 from variable_width_resnet import resnet50vw, resnet18vw, resnet10vw
 from supcon import SupConModel, LinearClassifier
-from losses import DistillationLoss, SupConLoss, CEWithCenterLoss, DistillationWithCenterLoss
+from losses import BCELoss, DistillationLoss, SupConLoss, CEWithCenterLoss, DistillationWithCenterLoss
 
 def main():
     parser = argparse.ArgumentParser()
@@ -44,7 +44,7 @@ def main():
     parser.add_argument('--use_normalized_loss', default=False, action='store_true')
     parser.add_argument('--btl', default=False, action='store_true')
     # parser.add_argument('--hinge', default=False, action='store_true')
-    parser.add_argument('--loss_fn', default="ce", choices=["ce", "hinge", "supcon", "center_loss", "distillation", "distillation_center_loss", "ce_mixup", "center_loss_mixup"])
+    parser.add_argument('--loss_fn', default="ce", choices=["ce", "hinge", "supcon", "center_loss", "distillation", "distillation_center_loss", "ce_mixup", "center_loss_mixup", "ce_mixup_complete"])
     parser.add_argument('--distillation_checkpoint', default=None)
     
     # Model
@@ -112,15 +112,18 @@ def main():
     # Test data for label_shift_step is not implemented yet
     ssl_transforms = args.loss_fn in ["supcon", "center_loss"]
     mixup = "mixup" in args.loss_fn
+    complete_mixup = False
     if mixup:
-        print("Using MixUp within instances of the same class...")
+        complete_mixup = "mixup_complete" in args.loss_fn
+    if mixup:
+        print(f"Using MixUp {'in the regular sense (all instances of different classes)' if complete_mixup else 'within instances of the same class'}...")
     assert args.distillation_checkpoint is None or args.loss_fn == "distillation"
     
     # ssl_transforms = False
     test_data = None
     test_loader = None
     if args.shift_type == 'confounder':
-        train_data, val_data, test_data = prepare_data(args, train=True, ssl_transforms=ssl_transforms, mixup=mixup)
+        train_data, val_data, test_data = prepare_data(args, train=True, ssl_transforms=ssl_transforms, mixup=mixup, complete_mixup=complete_mixup)
     elif args.shift_type == 'label_shift_step':
         assert not ssl_transforms
         train_data, val_data = prepare_data(args, train=True)
@@ -247,23 +250,11 @@ def main():
         criterion = DistillationWithCenterLoss(teacher_net, num_classes=n_classes, feat_dim=network_output_dim,
                                                lambd_distill=1., lambd_center=0.1, reduction='none')
     elif args.loss_fn == "ce_mixup":
-        def get_bce_loss(reduction):
-            assert reduction in ['mean', 'none']
-            eps = 1e-6
-
-            def bce_loss(x, y, reduction=reduction):
-                out = -(y * torch.log(x + eps) + (1 - y) * torch.log(1 - x + eps))
-                if reduction == 'mean':
-                    return out.mean()
-                assert reduction == 'none'
-                return out
-
-            return bce_loss
-
-        # print("Using CE with MixUP loss...")
-        # criterion = get_bce_loss(reduction='none')
         print("Using CE loss in conjunction with same-class MixUp...")
         criterion = torch.nn.CrossEntropyLoss(reduction='none')
+    elif args.loss_fn == "ce_mixup_complete":
+        print("Using CE with MixUP loss...")
+        criterion = BCELoss(reduction='none')
     else:
         assert args.loss_fn == "ce"
         criterion = torch.nn.CrossEntropyLoss(reduction='none')

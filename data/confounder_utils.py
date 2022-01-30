@@ -30,7 +30,8 @@ confounder_settings = {
 ########################
 ### DATA PREPARATION ###
 ########################
-def prepare_confounder_data(args, train, return_full_dataset=False, ssl_transforms=False, mixup=False):
+def prepare_confounder_data(args, train, return_full_dataset=False, ssl_transforms=False, mixup=False, complete_mixup=False):
+    assert not complete_mixup or mixup
     full_dataset = confounder_settings[args.dataset]['constructor'](
         root_dir=args.root_dir,
         target_name=args.target_name,
@@ -38,7 +39,8 @@ def prepare_confounder_data(args, train, return_full_dataset=False, ssl_transfor
         model_type=args.model,
         augment_data=args.augment_data,
         ssl_transforms=ssl_transforms,
-        mixup=mixup)
+        mixup=mixup,
+        complete_mixup=complete_mixup)
     if return_full_dataset:
         return DRODataset(
             full_dataset,

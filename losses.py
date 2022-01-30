@@ -271,3 +271,17 @@ class DistillationWithCenterLoss(nn.Module):
         
         loss = ce_loss + self.lambd_center * center_loss.sum(dim=1) + self.lambd_distill * distillation_loss
         return loss
+
+
+class BCELoss(nn.Module):
+    def __init__(self, reduction):
+        assert reduction in ['mean', 'none']
+        self.eps = 1e-6
+        self.reduction = reduction
+
+    def forward(self, x, y):
+        out = -(y * torch.log(x + self.eps) + (1 - y) * torch.log(1 - x + self.eps))
+        if self.reduction == 'mean':
+            return out.mean()
+        assert self.reduction == 'none'
+        return out
