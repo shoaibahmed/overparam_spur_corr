@@ -17,9 +17,19 @@ class DRODataset(Dataset):
             group_array.append(g)
             y_array.append(y)
         self._group_array = torch.LongTensor(group_array)
-        self._y_array = torch.LongTensor(y_array)
+        is_tensor = isinstance(y_array[0], torch.Tensor)
+        if is_tensor:
+            print("Using complete MixUp. Therefore, using float y_array instead of int.")
+            self._y_array = torch.stack(y_array, dim=0)
+            assert len(self._y_array.shape) == 2
+            self._y_array_orig = torch.argmax(self._y_array, dim=1)
+            self._y_counts = (torch.arange(self.n_classes).unsqueeze(1)==self._y_array_orig).sum(1).float()
+        else:
+            # assert isinstance(y_array[0], int)
+            self._y_array = torch.LongTensor(y_array)
+            self._y_counts = (torch.arange(self.n_classes).unsqueeze(1)==self._y_array).sum(1).float()
         self._group_counts = (torch.arange(self.n_groups).unsqueeze(1)==self._group_array).sum(1).float()
-        self._y_counts = (torch.arange(self.n_classes).unsqueeze(1)==self._y_array).sum(1).float()
+        # self._y_counts = (torch.arange(self.n_classes).unsqueeze(1)==self._y_array).sum(1).float()
 
     def __getitem__(self, idx):
         if self.process_item is None:

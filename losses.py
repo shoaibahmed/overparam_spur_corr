@@ -275,11 +275,13 @@ class DistillationWithCenterLoss(nn.Module):
 
 class BCELoss(nn.Module):
     def __init__(self, reduction):
+        super(BCELoss, self).__init__()
         assert reduction in ['mean', 'none']
         self.eps = 1e-6
         self.reduction = reduction
 
     def forward(self, x, y):
+        assert x.shape == y.shape, f"{x.shape} != {y.shape}"
         out = -(y * torch.log(x + self.eps) + (1 - y) * torch.log(1 - x + self.eps))
         if self.reduction == 'mean':
             return out.mean()

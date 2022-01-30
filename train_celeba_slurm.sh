@@ -25,7 +25,7 @@ for seed in 0; do
     # for width in 1 2 4 6 8 16 32 48 64 80 88 96; do
     # for width in 128 144 160 176 192 224; do
     # for width in 1 2 4 6 8 16 32 48 64 80 88 96 128 144 160 176 192 224; do
-    for width in 8 16 32 64 128; do
+    for width in 128; do
         # Train using CE loss
         # srun -p batch -K -N1 --ntasks-per-node=1 --gpus-per-task=1 --cpus-per-gpu=4 --mem=24G \
         #             --kill-on-bad-exit --job-name celebA-ce-reweight-w_${width}-s_${seed} --nice=0 \
