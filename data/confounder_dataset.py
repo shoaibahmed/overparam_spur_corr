@@ -44,7 +44,7 @@ class ConfounderDataset(Dataset):
             if self.split_array[idx] == self.split_dict['train'] and self.mixup:
                 pseudo_mixup = True  # Mixup only examples from the same class
                 if pseudo_mixup:
-                    print("Using pseudo mixup (mixing examples only from the same class)...")
+                    # print("Using pseudo mixup (mixing examples only from the same class)...")
                     same_class_instances = [i for i in range(len(self.filename_array)) if self.y_array[i] == y]
                     mixup_idx = np.random.choice(same_class_instances)
 
@@ -69,7 +69,6 @@ class ConfounderDataset(Dataset):
                 
                 else:
                     print("Using proper mixup...")
-
                     # Choose another image/label randomly
                     mixup_idx = random.randint(0, len(self.filename_array)-1)
                     mixup_y = torch.zeros(10)

@@ -9,10 +9,13 @@ def main():
     plot_summary(df, ['reweight', 'subsample', 'ERM'], ['reweight', 'subsample', 'ERM'], 'error_vs_overparam.png')
     summarize_results(df, ['reweight', 'subsample', 'ERM'], ['reweight', 'subsample', 'ERM'], 'summary.json')
 
-def load_results(seeds=[0,1,2],
+def load_results(seeds=[0], # [0,1,2],
                  # widths=[1,2,4,6,8,16,32,48,64,80,88,96,128,144,160,176,192,224],
+                 # widths=[1,2,4,6,8,16,32,48,64,80,88,96,128,160,192],
+                 # widths=[1,2,4,6,8,16,32,48,64,80,88,96,128,160],
                  widths=[1,2,4,6,8,16,32,48,64,80,88,96],
-                 epochs={'ERM':49, 'reweight':49, 'subsample':499},
+                 # epochs={'ERM':49, 'reweight':49, 'subsample':499},
+                 epochs={'reweight':49},
                  splits=['train','val','test'],
                  loss_funcs=['ce', 'supcon'],
                  n_groups=4,
@@ -20,7 +23,10 @@ def load_results(seeds=[0,1,2],
     # helpers
     def get_dirpath(opt_type, width, seed, loss_func):
         # rundir = f"output_{loss_func}_{opt_type.lower()}_{'lambda_0.01_' if loss_func == 'center' else ''}cosine_augment_fixed_proj_128/celebA_{opt_type.lower()}_width_{width}_seed_{seed}_{loss_func}"
-        rundir = f"output_{loss_func}_{opt_type.lower()}_{'lambda_0.01_' if loss_func == 'center' else 'lambda_0.1_' if loss_func == 'distill' else ''}cosine_augment/celebA_{opt_type.lower()}_width_{width}_seed_{seed}_{loss_func}"
+        # rundir = f"output_{loss_func}_{opt_type.lower()}_{'lambda_0.01_' if loss_func == 'center' else 'lambda_1_' if loss_func == 'distill' else 'lambda_1_0.1c_' if loss_func == 'distill_center' else ''}cosine_augment/celebA_{opt_type.lower()}_width_{width}_seed_{seed}_{loss_func}"
+        # rundir = f"output_{loss_func}_{opt_type.lower()}_{'lambda_0.01_' if loss_func == 'center' else 'lambda_1' if loss_func == 'distill' else ''}/celebA_{opt_type.lower()}_width_{width}_seed_{seed}_{loss_func}"
+        # rundir = f"output_{loss_func}_from_subsample_{opt_type.lower()}_{'lambda_0.01_' if loss_func == 'center' else 'lambda_1_' if loss_func == 'distill' else 'lambda_1_0.1c_' if loss_func == 'distill_center' else ''}cosine_augment_third/celebA_{opt_type.lower()}_width_{width}_seed_{seed}_{loss_func}_third"
+        rundir = f"output_{loss_func}_{opt_type.lower()}_{'lambda_0.01_' if loss_func == 'center' else 'lambda_1_' if loss_func == 'distill' else 'lambda_1_0.01c_' if loss_func in ['distill_center', 'center_mixup'] else ''}cosine_augment/celebA_{opt_type.lower()}_width_{width}_seed_{seed}_{loss_func}"
         linear_eval_dir = os.path.join(rundir, "linear_eval")
         if loss_func == 'supcon' and os.path.exists(linear_eval_dir):
             rundir = linear_eval_dir
@@ -35,7 +41,9 @@ def load_results(seeds=[0,1,2],
     #initialization
     results = []
     # for loss_func in loss_funcs:
-    for loss_func in ['distill']:
+    # for loss_func in ['distill_center']:
+    # for loss_func in ['center_mixup']:
+    for loss_func in ['ce_mixup']:
         for opt_type, last_epoch in epochs.items():
             if loss_func == 'supcon':
                 last_epoch = 9
@@ -70,6 +78,7 @@ def load_results(seeds=[0,1,2],
                     results.append(row)
     results_df = pd.DataFrame(results)
     results_df.to_csv('results.csv', index=False)
+    print(results_df)
     return results_df
 
 def plot_summary(df, opt_types, opt_type_names, outpath):
