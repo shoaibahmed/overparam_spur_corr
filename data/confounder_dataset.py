@@ -74,7 +74,7 @@ class ConfounderDataset(Dataset):
                     
                     # Choose another image/label randomly
                     mixup_idx = random.randint(0, len(self.filename_array)-1)
-                    mixup_y = torch.zeros(10)
+                    mixup_y = torch.zeros(self.n_classes)
                     mixup_y[self.y_array[mixup_idx]] = 1.
                     mixup_img_filename = os.path.join(
                                     self.data_dir,
@@ -91,7 +91,7 @@ class ConfounderDataset(Dataset):
 
                     # Mix the two samples including both the images as well as the labels
                     x = lam * img + (1 - lam) * mixup_img
-                    onehot_y = torch.zeros(10)
+                    onehot_y = torch.zeros(self.n_classes)
                     onehot_y[y] = 1.
                     y = lam * onehot_y + (1 - lam) * mixup_y
 
