@@ -41,17 +41,22 @@ class ConfounderDataset(Dataset):
             x = img
 
             # TODO: Include mixup logic here -- only if the given example is a training example
+            # FIXME: Maybe mixup is mixing training and validation/test images :(
             if self.split_array[idx] == self.split_dict['train'] and self.mixup:
                 # Select a random number from the given beta distribution
                 alpha = 0.2
                 lam = np.random.beta(alpha, alpha)
                 
+                # Use only training images
+                train_idx = [i for i in range(len(self.filename_array)) if self.split_array[i] == self.split_dict['train']]
                 pseudo_mixup = not self.complete_mixup  # Mixup only examples from the same class
+                
                 if pseudo_mixup:
                     # print("Using pseudo mixup (mixing examples only from the same class)...")
                     
                     # Choose another image randomly from the same class
-                    same_class_instances = [i for i in range(len(self.filename_array)) if self.y_array[i] == y]
+                    # same_class_instances = [i for i in range(len(self.filename_array)) if self.y_array[i] == y]
+                    same_class_instances = [i for i in train_idx if self.y_array[i] == y]
                     mixup_idx = np.random.choice(same_class_instances)
                     mixup_img_filename = os.path.join(
                                     self.data_dir,
@@ -73,7 +78,8 @@ class ConfounderDataset(Dataset):
                     # print("Using proper mixup...")
                     
                     # Choose another image/label randomly
-                    mixup_idx = random.randint(0, len(self.filename_array)-1)
+                    # mixup_idx = random.randint(0, len(self.filename_array)-1)
+                    mixup_idx = np.random.choice(train_idx)
                     mixup_y = torch.zeros(self.n_classes)
                     mixup_y[self.y_array[mixup_idx]] = 1.
                     mixup_img_filename = os.path.join(
@@ -94,6 +100,9 @@ class ConfounderDataset(Dataset):
                     onehot_y = torch.zeros(self.n_classes)
                     onehot_y[y] = 1.
                     y = lam * onehot_y + (1 - lam) * mixup_y
+                
+                # Use the appropriate group based on whether the image is close to the first image or the second image    
+                g = self.group_array[mixup_idx if lam < 0.5 else idx]
 
         return x,y,g
 

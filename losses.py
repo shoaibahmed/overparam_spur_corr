@@ -286,4 +286,4 @@ class BCELoss(nn.Module):
         if self.reduction == 'mean':
             return out.mean()
         assert self.reduction == 'none'
-        return out
+        return out.mean(dim=1)  # Reduce only on the number of classes, but not on the instances
