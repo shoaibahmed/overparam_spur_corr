@@ -279,11 +279,17 @@ class BCELoss(nn.Module):
         assert reduction in ['mean', 'none']
         self.eps = 1e-6
         self.reduction = reduction
+        self.ce_criterion = nn.CrossEntropyLoss(reduction=self.reduction)
 
     def forward(self, x, y):
-        assert x.shape == y.shape, f"{x.shape} != {y.shape}"
-        out = -(y * torch.log(x + self.eps) + (1 - y) * torch.log(1 - x + self.eps))
-        if self.reduction == 'mean':
-            return out.mean()
-        assert self.reduction == 'none'
-        return out.mean(dim=1)  # Reduce only on the number of classes, but not on the instances
+        assert len(y.shape) in [1, 2]
+        is_integer_label = len(y.shape) == 1
+        if is_integer_label:
+            return self.ce_criterion(x, y)
+        else:
+            assert x.shape == y.shape, f"{x.shape} != {y.shape}"
+            out = -(y * torch.log(x + self.eps) + (1 - y) * torch.log(1 - x + self.eps))
+            if self.reduction == 'mean':
+                return out.mean()
+            assert self.reduction == 'none'
+            return out.mean(dim=1)  # Reduce only on the number of classes, but not on the instances

@@ -48,7 +48,8 @@ class ConfounderDataset(Dataset):
                 lam = np.random.beta(alpha, alpha)
                 
                 # Use only training images
-                train_idx = [i for i in range(len(self.filename_array)) if self.split_array[i] == self.split_dict['train']]
+                # train_idx = [i for i in range(len(self.filename_array)) if self.split_array[i] == self.split_dict['train']]
+                train_idx = self.train_idx
                 pseudo_mixup = not self.complete_mixup  # Mixup only examples from the same class
                 
                 if pseudo_mixup:

@@ -25,7 +25,8 @@ for seed in 0; do
     # for width in 1 2 4 6 8 16 32 48 64 80 88 96; do
     # for width in 128 144 160 176 192 224; do
     # for width in 1 2 4 6 8 16 32 48 64 80 88 96 128 144 160 176 192 224; do
-    for width in 128; do
+    # for width in 1 4 8 16 32 64 96 128; do
+    for width in 2 4 6 48 80 88 96 144 160 176 192; do
         # Train using CE loss
         # srun -p batch -K -N1 --ntasks-per-node=1 --gpus-per-task=1 --cpus-per-gpu=4 --mem=24G \
         #             --kill-on-bad-exit --job-name celebA-ce-reweight-w_${width}-s_${seed} --nice=0 \
@@ -180,14 +181,23 @@ for seed in 0; do
         #                 --batch_size 128 --weight_decay 0.0001 --model resnet10vw --seed ${seed} --n_epochs 50 --cls_epochs 10 --augment_data --save_step 10000 --save_last --log_every 50 --reweight_groups --train_from_scratch --resnet_width ${width} --loss_fn "ce_mixup" --lr-scheduler "cosine" \
         #                 --log_dir /netscratch/siddiqui/Repositories/overparam_spur_corr/output_ce_mixup_reweight_cosine_augment/celebA_reweight_width_${width}_seed_${seed}_ce_mixup/ > /netscratch/siddiqui/Repositories/overparam_spur_corr/output_ce_mixup_reweight_cosine_augment/celebA_reweight_width_${width}_seed_${seed}_ce_mixup.log 2>&1 &
 
-        # TODO: Train with complete MixUp
-        srun -p RTX3090 -K -N1 --ntasks-per-node=1 --gpus-per-task=1 --cpus-per-gpu=4 --mem=24G \
-                    --kill-on-bad-exit --job-name celebA-mixup-complete-reweight-w_${width}-s_${seed}-cosine-aug --nice=0 \
+        # TODO: Train the new models (without sample contamination) with MixUp
+        srun -p V100-16GB -K -N1 --ntasks-per-node=1 --gpus-per-task=1 --cpus-per-gpu=8 --mem=24G \
+                    --kill-on-bad-exit --job-name celebA-mixup-new-reweight-w_${width}-s_${seed}-cosine-aug --nice=0 \
                     --container-mounts=/netscratch:/netscratch,/ds:/ds,/home/siddiqui:/home/siddiqui --container-image=/netscratch/enroot/nvcr.io_nvidia_pytorch_21.06-py3.sqsh \
                     --container-workdir=`pwd` --container-mount-home --export="NCCL_SOCKET_IFNAME=bond,NCCL_IB_HCA=mlx5" \
                     /opt/conda/bin/python /netscratch/siddiqui/Repositories/overparam_spur_corr/run_expt_supcon_new.py -s confounder -d CelebA -t Blond_Hair -c Male --fraction 1.0 --lr 0.01 \
-                        --batch_size 128 --weight_decay 0.0001 --model resnet10vw --seed ${seed} --n_epochs 50 --cls_epochs 10 --augment_data --save_step 10000 --save_last --log_every 50 --reweight_groups --train_from_scratch --resnet_width ${width} --loss_fn "ce_mixup_complete" --lr-scheduler "cosine" \
-                        --log_dir /netscratch/siddiqui/Repositories/overparam_spur_corr/output_ce_mixup_complete_reweight_cosine_augment/celebA_reweight_width_${width}_seed_${seed}_ce_mixup_complete/ > /netscratch/siddiqui/Repositories/overparam_spur_corr/output_ce_mixup_complete_reweight_cosine_augment/celebA_reweight_width_${width}_seed_${seed}_ce_mixup_complete.log 2>&1 &
+                        --batch_size 128 --weight_decay 0.0001 --model resnet10vw --seed ${seed} --n_epochs 50 --cls_epochs 10 --augment_data --save_step 10000 --save_last --log_every 50 --reweight_groups --train_from_scratch --resnet_width ${width} --loss_fn "ce_mixup" --lr-scheduler "cosine" \
+                        --log_dir /netscratch/siddiqui/Repositories/overparam_spur_corr/output_ce_mixup_reweight_cosine_augment_new/celebA_reweight_width_${width}_seed_${seed}_ce_mixup_new/ > /netscratch/siddiqui/Repositories/overparam_spur_corr/output_ce_mixup_reweight_cosine_augment_new/celebA_reweight_width_${width}_seed_${seed}_ce_mixup_new.log 2>&1 &
+
+        # TODO: Train with complete MixUp
+        # srun -p RTX3090 -K -N1 --ntasks-per-node=1 --gpus-per-task=1 --cpus-per-gpu=4 --mem=24G \
+        #             --kill-on-bad-exit --job-name celebA-mixup-complete-reweight-w_${width}-s_${seed}-cosine-aug --nice=0 \
+        #             --container-mounts=/netscratch:/netscratch,/ds:/ds,/home/siddiqui:/home/siddiqui --container-image=/netscratch/enroot/nvcr.io_nvidia_pytorch_21.06-py3.sqsh \
+        #             --container-workdir=`pwd` --container-mount-home --export="NCCL_SOCKET_IFNAME=bond,NCCL_IB_HCA=mlx5" \
+        #             /opt/conda/bin/python /netscratch/siddiqui/Repositories/overparam_spur_corr/run_expt_supcon_new.py -s confounder -d CelebA -t Blond_Hair -c Male --fraction 1.0 --lr 0.01 \
+        #                 --batch_size 128 --weight_decay 0.0001 --model resnet10vw --seed ${seed} --n_epochs 50 --cls_epochs 10 --augment_data --save_step 10000 --save_last --log_every 50 --reweight_groups --train_from_scratch --resnet_width ${width} --loss_fn "ce_mixup_complete" --lr-scheduler "cosine" \
+        #                 --log_dir /netscratch/siddiqui/Repositories/overparam_spur_corr/output_ce_mixup_complete_reweight_cosine_augment/celebA_reweight_width_${width}_seed_${seed}_ce_mixup_complete/ > /netscratch/siddiqui/Repositories/overparam_spur_corr/output_ce_mixup_complete_reweight_cosine_augment/celebA_reweight_width_${width}_seed_${seed}_ce_mixup_complete.log 2>&1 &
         
         # TODO: Train with MixUP and center loss
         # srun -p batch -K -N1 --ntasks-per-node=1 --gpus-per-task=1 --cpus-per-gpu=4 --mem=24G \

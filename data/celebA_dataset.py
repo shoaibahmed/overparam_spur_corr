@@ -69,6 +69,7 @@ class CelebADataset(ConfounderDataset):
         self.ssl_transforms = ssl_transforms
         self.mixup = mixup
         self.complete_mixup = complete_mixup
+        self.train_idx = [i for i in range(len(self.filename_array)) if self.split_array[i] == self.split_dict['train']]
         if model_attributes[self.model_type]['feature_type']=='precomputed':
             self.features_mat = torch.from_numpy(np.load(
                 os.path.join(root_dir, 'features', model_attributes[self.model_type]['feature_filename']))).float()
